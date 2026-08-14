@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sobres">
+<meta name="theme-color" content="#1F4B3F">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231F4B3F'/%3E%3Ctext x='50' y='68' font-size='55' text-anchor='middle'%3E%F0%9F%90%B7%3C/text%3E%3C/svg%3E">
+<title>Sobres — 50/30/20</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EDF2E9;
+    --paper: #FBFAF6;
+    --ink: #16241C;
+    --ink-soft: #52604F;
+    --line: #D6DECB;
+
+    --needs: #1F4B3F;
+    --needs-soft: #DCE8DF;
+    --wants: #B5842A;
+    --wants-soft: #F4E8CB;
+    --savings: #2B6777;
+    --savings-soft: #D9E7EA;
+
+    --alert: #A8402A;
+    --alert-soft: #F3DCD5;
+    --info: #4A5FA3;
+    --info-soft: #DEE2F2;
+
+    --radius: 18px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:100px;
+  }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    position:relative;
+  }
+  ::selection{ background:var(--wants-soft); }
+
+  .loading-screen{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; gap:14px; }
+  .coin{ width:46px; height:46px; border-radius:50%; border:3px solid var(--needs); border-top-color:transparent; animation:spin 0.9s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+  .loading-screen p{ color:var(--ink-soft); font-size:14px; }
+
+  header{ padding:28px 20px 14px; display:flex; align-items:flex-start; justify-content:space-between; }
+  .month-label{ font-family:var(--font-display); font-size:15px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 2px; }
+  .income-line{ font-family:var(--font-display); font-size:32px; font-weight:600; margin:0; line-height:1.1; }
+  .income-line .cur{ font-size:18px; font-weight:500; color:var(--ink-soft); }
+  .icon-btn{ width:40px; height:40px; border-radius:50%; border:1px solid var(--line); background:var(--paper); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; color:var(--ink); }
+  .icon-btn:active{ transform:scale(0.94); }
+
+  .reminders{ padding:0 20px; margin-bottom:14px; display:flex; flex-direction:column; gap:8px; }
+  .reminder{ display:flex; align-items:center; gap:10px; background:var(--info-soft); color:var(--info); border-radius:12px; padding:10px 12px; font-size:12.5px; font-weight:500; }
+  .reminder.urgent{ background:var(--alert-soft); color:var(--alert); }
+  .reminder .rem-icon{ font-size:15px; flex-shrink:0; }
+
+  .alcancia{ margin:0 20px 18px; padding:20px; background:linear-gradient(155deg, var(--savings) 0%, #1F4E5A 100%); border-radius:var(--radius); color:#fff; position:relative; overflow:hidden; }
+  .alcancia .pig{ position:absolute; right:14px; top:10px; font-size:44px; opacity:0.18; }
+  .alcancia .label{ font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.85; margin:0 0 4px; font-weight:500; }
+  .alcancia .total{ font-family:var(--font-display); font-size:30px; font-weight:600; margin:0 0 14px; }
+  .alcancia .btnrow{ display:flex; gap:8px; position:relative; z-index:1; }
+  .alcancia .btnrow button{ flex:1; background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.35); color:#fff; padding:10px; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:var(--font-body); }
+  .alcancia .btnrow button:active{ background:rgba(255,255,255,0.28); }
+  .alcancia .unassigned{ font-size:11.5px; opacity:0.85; margin:-8px 0 14px; position:relative; z-index:1; }
+
+  .goal-card{ background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:10px; cursor:pointer; }
+  .goal-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:8px; }
+  .goal-top .gname{ font-weight:600; font-size:14px; font-family:var(--font-display); }
+  .goal-top .gdate{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .goal-gauge{ height:10px; border-radius:6px; background:var(--line); overflow:hidden; margin-bottom:6px; }
+  .goal-gauge-fill{ height:100%; border-radius:6px; background:var(--savings); transition:width .5s ease; }
+  .goal-nums{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); }
+
+  .envelopes{ padding:6px 20px 0; display:flex; flex-direction:column; gap:12px; }
+  .envelope{ background:var(--paper); border-radius:var(--radius); padding:18px 18px 16px; border:1px solid var(--line); position:relative; overflow:hidden; cursor:pointer; transition:box-shadow .15s ease; }
+  .envelope:active{ box-shadow:inset 0 0 0 1px var(--line); }
+  .envelope.over{ border-color:var(--alert); }
+  .env-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .env-title{ display:flex; align-items:baseline; gap:8px; }
+  .env-title h3{ margin:0; font-family:var(--font-display); font-size:17px; font-weight:600; }
+  .env-pct{ font-size:11px; color:var(--ink-soft); font-family:var(--font-mono); }
+  .env-flag{ font-size:11px; font-weight:600; color:var(--alert); background:var(--alert-soft); padding:3px 8px; border-radius:20px; }
+  .gauge{ height:14px; border-radius:8px; background:var(--line); overflow:hidden; position:relative; margin-bottom:10px; }
+  .gauge-fill{ height:100%; border-radius:8px; transition:width .5s cubic-bezier(.2,.7,.3,1); position:relative; }
+  .gauge-fill::after{ content:''; position:absolute; inset:0; background:linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation:shine 2.4s ease-in-out infinite; }
+  @keyframes shine{ 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(220%)} }
+  .env-nums{ display:flex; justify-content:space-between; align-items:baseline; font-family:var(--font-mono); font-size:12.5px; color:var(--ink-soft); }
+  .env-nums b{ color:var(--ink); font-weight:600; }
+  .env-detail{ margin-top:14px; padding-top:14px; border-top:1px dashed var(--line); }
+  .env-detail .decision-row{ display:flex; align-items:center; justify-content:space-between; background:var(--alert-soft); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:12.5px; color:var(--alert); gap:8px; }
+  .decision-row select{ font-family:var(--font-body); font-size:12px; border:1px solid var(--alert); border-radius:8px; background:var(--paper); color:var(--alert); padding:4px 6px; }
+  .env-exp-item{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:13px; border-bottom:1px solid var(--line); gap:8px; }
+  .env-exp-item:last-child{ border-bottom:none; }
+  .env-exp-main{ display:flex; flex-direction:column; min-width:0; }
+  .env-exp-main .d{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .env-exp-main .c{ font-size:11px; color:var(--ink-soft); }
+  .env-exp-amt{ font-family:var(--font-mono); font-weight:600; flex-shrink:0; }
+  .empty-note{ font-size:12.5px; color:var(--ink-soft); padding:6px 0; }
+  .del-x{ border:none; background:none; color:var(--ink-soft); cursor:pointer; font-size:15px; padding:2px 4px; line-height:1; }
+  .tag-fijo{ font-size:9.5px; background:var(--line); color:var(--ink-soft); padding:2px 6px; border-radius:8px; margin-left:6px; white-space:nowrap; }
+
+  .section-title{ font-family:var(--font-display); font-size:15px; font-weight:600; margin:26px 20px 10px; letter-spacing:0.01em; }
+  .movements{ padding:0 20px; display:flex; flex-direction:column; gap:8px; }
+  .mv-row{ background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:12px; }
+  .mv-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .mv-mid{ flex:1; min-width:0; }
+  .mv-desc{ font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mv-sub{ font-size:11.5px; color:var(--ink-soft); }
+  .mv-amt{ font-family:var(--font-mono); font-weight:600; font-size:14px; flex-shrink:0; }
+  .mv-del{ border:none; background:none; color:var(--ink-soft); cursor:pointer; font-size:16px; padding:2px 2px 2px 6px; }
+
+  .fab{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%); width:calc(100% - 40px); max-width:440px; background:var(--ink); color:var(--paper); border:none; border-radius:16px; padding:16px; font-family:var(--font-body); font-weight:600; font-size:15px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; box-shadow:0 8px 24px rgba(22,36,28,0.25); z-index:40; }
+  .fab:active{ transform:translateX(-50%) scale(0.98); }
+
+  .overlay{ position:fixed; inset:0; background:rgba(22,36,28,0.45); display:flex; align-items:flex-end; justify-content:center; z-index:100; animation:fadeIn .15s ease; }
+  @keyframes fadeIn{ from{opacity:0} to{opacity:1} }
+  .overlay.center{ align-items:center; padding:20px; }
+  .sheet{ background:var(--paper); width:100%; max-width:480px; border-radius:22px 22px 0 0; padding:22px 20px 28px; max-height:88vh; overflow-y:auto; animation:slideUp .2s cubic-bezier(.2,.8,.3,1); position:relative; }
+  .overlay.center .sheet{ border-radius:20px; max-width:400px; }
+  @keyframes slideUp{ from{ transform:translateY(24px); opacity:0 } to{ transform:translateY(0); opacity:1 } }
+  .sheet h2{ font-family:var(--font-display); font-size:19px; margin:0 0 16px; }
+  .sheet h3{ font-family:var(--font-display); font-size:15px; margin:0 0 10px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px; font-weight:500; }
+  .field input, .field select{ width:100%; padding:12px 13px; border:1px solid var(--line); border-radius:12px; font-size:15px; font-family:var(--font-body); background:#fff; color:var(--ink); }
+  .field input:focus, .field select:focus{ outline:2px solid var(--needs); outline-offset:1px; }
+  .field .hint{ font-size:11.5px; color:var(--ink-soft); margin-top:5px; }
+  .checkbox-field{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); margin:2px 0 14px; }
+  .checkbox-field input{ width:auto; }
+  .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{ padding:9px 14px; border-radius:20px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:500; cursor:pointer; color:var(--ink-soft); }
+  .chip.active{ color:#fff; border-color:transparent; }
+  .chip[data-cat="needs"].active{ background:var(--needs); }
+  .chip[data-cat="wants"].active{ background:var(--wants); }
+  .chip[data-cat="savings"].active{ background:var(--savings); }
+  .chip[data-etcat="needs"].active{ background:var(--needs); }
+  .chip[data-etcat="wants"].active{ background:var(--wants); }
+  .chip[data-etcat="savings"].active{ background:var(--savings); }
+  .row-2{ display:flex; gap:10px; }
+  .row-3{ display:flex; gap:8px; }
+  .row-2 > *, .row-3 > *{ flex:1; min-width:0; }
+  .btn-primary{ width:100%; padding:14px; border:none; border-radius:12px; background:var(--ink); color:var(--paper); font-size:15px; font-weight:600; cursor:pointer; margin-top:6px; font-family:var(--font-body); }
+  .btn-primary:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn-secondary{ width:100%; padding:13px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--ink); font-size:14px; font-weight:500; cursor:pointer; margin-top:8px; font-family:var(--font-body); }
+  .btn-danger{ width:100%; padding:13px; border:1px solid var(--alert); border-radius:12px; background:transparent; color:var(--alert); font-size:14px; font-weight:500; cursor:pointer; margin-top:8px; font-family:var(--font-body); }
+  .btn-text{ background:none; border:none; color:var(--ink-soft); font-size:13px; cursor:pointer; text-decoration:underline; padding:6px 0; font-family:var(--font-body); }
+  .sheet-close{ position:absolute; top:16px; right:18px; border:none; background:none; font-size:20px; color:var(--ink-soft); cursor:pointer; }
+  .list-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .list-row .ci{ min-width:0; }
+  .list-row .ci .n{ font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .list-row .ci .s{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .list-row button{ border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 10px; font-size:12px; color:var(--ink); cursor:pointer; flex-shrink:0; }
+  .split-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .split-row .sw{ width:14px; height:14px; border-radius:4px; flex-shrink:0; }
+  .split-row label{ flex:1; font-size:13.5px; font-weight:500; margin:0; }
+  .split-row input{ width:70px; text-align:right; padding:9px 10px; }
+  .split-sum{ font-size:12.5px; margin:2px 0 6px; }
+  .split-sum.ok{ color:var(--needs); }
+  .split-sum.bad{ color:var(--alert); }
+  .decision-modal p{ font-size:14px; line-height:1.5; color:var(--ink-soft); margin:0 0 18px; }
+  .decision-modal .amt{ color:var(--alert); font-weight:600; font-family:var(--font-mono); }
+  .install-note{ margin:0 20px 14px; padding:12px 14px; background:var(--info-soft); color:var(--info); border-radius:14px; font-size:12.5px; line-height:1.5; }
+  .install-note b{ display:block; margin-bottom:2px; font-size:13px;}
+  .close-note-btn{ float:right; border:none; background:none; color:var(--info); cursor:pointer; font-size:15px; }
+  hr.sep{ border:none; border-top:1px solid var(--line); margin:18px 0; }
+  .totalline{ font-size:13px; color:var(--ink-soft); margin-bottom:14px; }
+  .totalline b{ color:var(--ink); font-family:var(--font-mono); }
+  .hist-row{ display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; gap:8px; }
+  .hist-row:last-child{ border-bottom:none; }
+  .hist-amt.pos{ color:var(--needs); font-family:var(--font-mono); font-weight:600; }
+  .hist-amt.neg{ color:var(--alert); font-family:var(--font-mono); font-weight:600; }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading-screen"><div class="coin"></div><p>Abriendo tus sobres…</p></div></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const CATS = {
+    needs:   { id:'needs',   label:'Necesidades', hex:'#1F4B3F' },
+    wants:   { id:'wants',   label:'Deseos',       hex:'#B5842A' },
+    savings: { id:'savings', label:'Ahorro',       hex:'#2B6777' }
+  };
+  const CAT_ORDER = ['needs','wants','savings'];
+  const DEFAULT_SPLITS = { needs:0.5, wants:0.3, savings:0.2 };
+
+  const fmt = new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:0 });
+  const fmt2 = new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:2 });
+
+  function monthKeyFromDate(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+  function monthLabel(key){
+    const [y,m] = key.split('-').map(Number);
+    const d = new Date(y, m-1, 1);
+    let s = new Intl.DateTimeFormat('es-MX', { month:'long', year:'numeric' }).format(d);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function startOfToday(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+  function buildDateForDay(monthKey, day){
+    const [y,m] = monthKey.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const d = Math.min(Math.max(1,day||1), daysInMonth);
+    return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+  }
+
+  async function sGet(key){
+    try{ const raw = localStorage.getItem(key); return raw !== null ? JSON.parse(raw) : null; }
+    catch(e){ return null; }
+  }
+  async function sSet(key, value){
+    try{ localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch(e){ console.error('storage set failed', key, e); return false; }
+  }
+  async function sListKeys(prefix){
+    try{
+      const keys = [];
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && (!prefix || k.startsWith(prefix))) keys.push(k);
+      }
+      return keys;
+    }catch(e){ return []; }
+  }
+
+  function migrateMonthInPlace(rec){
+    if(!rec.incomes){ rec.incomes = rec.income ? [{ id: uid(), desc:'Ingreso', amount: rec.income, day:null, templateId:null }] : []; }
+    if(!rec.withdrawals) rec.withdrawals = [];
+    if(!rec.splits) rec.splits = {...DEFAULT_SPLITS};
+    if(!rec.expenses) rec.expenses = [];
+    if(!rec.carryoverApplied) rec.carryoverApplied = { needs:0, wants:0, savings:0 };
+    if(!rec.decisions) rec.decisions = { needs:null, wants:null, savings:null };
+    return rec;
+  }
+  async function loadMonth(fullKey){
+    const rec = await sGet(fullKey);
+    if(!rec) return null;
+    return migrateMonthInPlace(rec);
+  }
+
+  let state = {
+    global: null, monthKey: '', month: null, expandedCat: null, modal: null,
+    decisionQueue: [], draftExpense: null, savingsTotal: 0, savingsHistory: [], showInstallNote: true
+  };
+
+  function splitsOf(monthRec){ return (monthRec && monthRec.splits) ? monthRec.splits : DEFAULT_SPLITS; }
+  function monthIncome(monthRec){ return (monthRec.incomes||[]).reduce((s,i)=>s+i.amount,0); }
+  function budgeted(monthRec, catId){
+    const pct = splitsOf(monthRec)[catId];
+    const gross = monthIncome(monthRec) * pct;
+    const carry = (monthRec.carryoverApplied && monthRec.carryoverApplied[catId]) || 0;
+    return Math.max(0, gross - carry);
+  }
+  function spent(monthRec, catId){ return (monthRec.expenses||[]).filter(e=>e.cat===catId).reduce((s,e)=>s+e.amount,0); }
+  function overageOf(monthRec, catId){ return Math.max(0, spent(monthRec, catId) - budgeted(monthRec, catId)); }
+  function spentOnCard(monthRec, cardId){ return (monthRec.expenses||[]).filter(e=>e.cardId===cardId).reduce((s,e)=>s+e.amount,0); }
+
+  function newMonthRecord(key, splits){
+    return { key, incomes: [], splits: splits ? {...splits} : {...DEFAULT_SPLITS},
+      carryoverApplied: { needs:0, wants:0, savings:0 }, decisions: { needs:null, wants:null, savings:null },
+      closed:false, expenses:[], withdrawals:[] };
+  }
+
+  function populateFromTemplates(monthRec, global, monthKey){
+    for(const t of (global.incomeTemplates||[])){
+      for(const day of t.days){
+        if(!monthRec.incomes.some(i=>i.templateId===t.id && i.day===day)){
+          monthRec.incomes.push({ id:uid(), desc:t.desc, amount:t.amount, day, templateId:t.id });
+        }
+      }
+    }
+    for(const t of (global.expenseTemplates||[])){
+      if(!monthRec.expenses.some(e=>e.templateId===t.id)){
+        monthRec.expenses.push({ id:uid(), desc:t.desc, amount:t.amount, cardId:t.cardId, cat:t.cat, date:buildDateForDay(monthKey, t.day), templateId:t.id, isFixed:true });
+      }
+    }
+  }
+
+  async function init(){
+    let global = await sGet('global');
+    if(!global){ global = { cards:[], splits:{...DEFAULT_SPLITS}, incomeTemplates:[], expenseTemplates:[], goals:[], onboarded:false }; }
+    if(!global.splits) global.splits = {...DEFAULT_SPLITS};
+    if(!global.cards) global.cards = [];
+    if(!global.incomeTemplates) global.incomeTemplates = [];
+    if(!global.expenseTemplates) global.expenseTemplates = [];
+    if(!global.goals) global.goals = [];
+    state.global = global;
+
+    const key = monthKeyFromDate(new Date());
+    state.monthKey = key;
+
+    let monthRec = await loadMonth('month:'+key);
+    if(!monthRec){
+      const keys = (await sListKeys('month:')).filter(k => k !== 'month:'+key).sort();
+      const prevKey = keys.length ? keys[keys.length-1] : null;
+      let carry = { needs:0, wants:0, savings:0 };
+      if(prevKey){
+        let prevRec = await loadMonth(prevKey);
+        if(prevRec && !prevRec.closed){
+          let allResolved = true;
+          for(const cat of CAT_ORDER){
+            const over = overageOf(prevRec, cat);
+            if(over > 0.5 && prevRec.decisions[cat] == null){
+              state.decisionQueue.push({ monthKey: prevRec.key, cat, overage: over, isCurrentMonth:false });
+              allResolved = false;
+            }
+          }
+          if(allResolved) prevRec.closed = true;
+          await sSet(prevKey, prevRec);
+        }
+        if(prevRec){
+          for(const cat of CAT_ORDER){ if(prevRec.decisions[cat] === 'defer') carry[cat] = overageOf(prevRec, cat); }
+        }
+      }
+      monthRec = newMonthRecord(key, global.splits);
+      monthRec.carryoverApplied = carry;
+      populateFromTemplates(monthRec, global, key);
+      await sSet('month:'+key, monthRec);
+    }
+    state.month = monthRec;
+
+    const allKeys = (await sListKeys('month:')).filter(k => k !== 'month:'+key);
+    for(const k of allKeys){
+      const rec = await loadMonth(k);
+      if(rec && !rec.closed){
+        for(const cat of CAT_ORDER){
+          const over = overageOf(rec, cat);
+          if(over > 0.5 && rec.decisions[cat] == null){
+            const already = state.decisionQueue.some(q=>q.monthKey===rec.key && q.cat===cat);
+            if(!already) state.decisionQueue.push({ monthKey:rec.key, cat, overage:over, isCurrentMonth:false });
+          }
+        }
+      }
+    }
+
+    if(!global.onboarded || global.cards.length === 0){ state.modal = { type:'onboarding' }; }
+    else if(state.decisionQueue.length){ state.modal = { type:'decision' }; }
+
+    await recomputeSavings();
+    render();
+  }
+
+  async function saveMonth(){ await sSet('month:'+state.month.key, state.month); }
+  async function saveGlobal(){ await sSet('global', state.global); }
+
+  async function recomputeSavings(){
+    const keys = await sListKeys('month:');
+    let total = 0; let history = [];
+    for(const k of keys){
+      const rec = (k === 'month:'+state.monthKey) ? state.month : await loadMonth(k);
+      if(!rec) continue;
+      for(const e of rec.expenses){
+        if(e.cat === 'savings'){ total += e.amount; history.push({ type:'deposit', desc:e.desc, amount:e.amount, date:e.date, monthKey:rec.key }); }
+      }
+      for(const w of rec.withdrawals){ total -= w.amount; history.push({ type:'withdrawal', id:w.id, desc:w.desc, amount:w.amount, date:w.date, monthKey:rec.key }); }
+    }
+    history.sort((a,b)=> b.date.localeCompare(a.date));
+    state.savingsTotal = total; state.savingsHistory = history;
+  }
+
+  async function submitOnboarding(income, cardName){
+    state.global.cards.push({ id: uid(), name: cardName, cutoffDay:null, paymentDay:null, minSpend:null });
+    state.global.onboarded = true;
+    await saveGlobal();
+    if(income > 0){ state.month.incomes.push({ id: uid(), desc:'Ingreso', amount: income, day:null, templateId:null }); await saveMonth(); }
+    state.modal = state.decisionQueue.length ? { type:'decision' } : null;
+    await recomputeSavings();
+    render();
+  }
+
+  async function saveCard(data){
+    if(data.id){ Object.assign(state.global.cards.find(c=>c.id===data.id), data); }
+    else{ data.id = uid(); state.global.cards.push(data); }
+    await saveGlobal();
+    return data.id;
+  }
+  async function removeCardGlobal(id){
+    const used = (state.month.expenses||[]).some(e=>e.cardId===id);
+    if(used){ alert('Esta tarjeta ya tiene gastos registrados este mes, no se puede eliminar.'); return false; }
+    state.global.cards = state.global.cards.filter(c=>c.id!==id);
+    await saveGlobal();
+    return true;
+  }
+
+  async function updateSplits(splits){
+    state.month.splits = {...splits}; state.global.splits = {...splits};
+    await saveMonth(); await saveGlobal();
+    render();
+  }
+
+  async function addExpense(desc, amount, cardId, cat, date, makeFixed){
+    let templateId = null;
+    if(makeFixed){
+      const day = parseInt(date.split('-')[2], 10);
+      const tmpl = { id:uid(), desc, amount, cardId, cat, day };
+      state.global.expenseTemplates.push(tmpl);
+      await saveGlobal();
+      templateId = tmpl.id;
+    }
+    state.month.expenses.push({ id: uid(), desc, amount, cardId, cat, date, templateId, isFixed: !!makeFixed });
+    await saveMonth();
+    state.modal = null; state.draftExpense = null;
+    if(cat === 'savings') await recomputeSavings();
+    const over = overageOf(state.month, cat);
+    if(over > 0.5 && state.month.decisions[cat] == null){
+      state.decisionQueue = [{ monthKey: state.month.key, cat, overage: over, isCurrentMonth:true }];
+      state.modal = { type:'decision' };
+    }
+    render();
+  }
+
+  async function deleteExpense(id){
+    const e = state.month.expenses.find(x=>x.id===id);
+    const wasSavings = e && e.cat === 'savings';
+    state.month.expenses = state.month.expenses.filter(e=>e.id!==id);
+    await saveMonth();
+    if(wasSavings) await recomputeSavings();
+    render();
+  }
+
+  async function resolveDecision(choice){
+    const item = state.decisionQueue[0];
+    if(item.isCurrentMonth){ state.month.decisions[item.cat] = choice; await saveMonth(); }
+    else{
+      let rec = await loadMonth('month:'+item.monthKey);
+      rec.decisions[item.cat] = choice;
+      const stillUnresolved = CAT_ORDER.some(c => rec.decisions[c]==null && overageOf(rec,c) > 0.5);
+      if(!stillUnresolved) rec.closed = true;
+      await sSet('month:'+item.monthKey, rec);
+    }
+    state.decisionQueue.shift();
+    if(state.decisionQueue.length === 0) state.modal = null;
+    render();
+  }
+
+  async function changeDecisionForCurrentCat(cat, choice){
+    state.month.decisions[cat] = choice === 'none' ? null : choice;
+    await saveMonth();
+    render();
+  }
+
+  async function addIncomeManual(desc, amount, day, repeat){
+    if(repeat){
+      const tmpl = { id:uid(), desc, amount, days:[day] };
+      state.global.incomeTemplates.push(tmpl);
+      await saveGlobal();
+      state.month.incomes.push({ id:uid(), desc, amount, day, templateId:tmpl.id });
+    }else{ state.month.incomes.push({ id:uid(), desc, amount, day: day||null, templateId:null }); }
+    await saveMonth();
+    render();
+  }
+  async function removeIncomeEntry(id){
+    state.month.incomes = state.month.incomes.filter(i=>i.id!==id);
+    await saveMonth();
+    render();
+  }
+  async function removeIncomeTemplate(id){
+    state.global.incomeTemplates = state.global.incomeTemplates.filter(t=>t.id!==id);
+    await saveGlobal();
+    render();
+  }
+  async function addIncomeTemplateAndInject(desc, amount, days){
+    const tmpl = { id:uid(), desc, amount, days };
+    state.global.incomeTemplates.push(tmpl);
+    await saveGlobal();
+    for(const day of days) state.month.incomes.push({ id:uid(), desc, amount, day, templateId:tmpl.id });
+    await saveMonth();
+  }
+
+  async function removeExpenseTemplate(id){
+    state.global.expenseTemplates = state.global.expenseTemplates.filter(t=>t.id!==id);
+    await saveGlobal();
+    render();
+  }
+  async function addExpenseTemplateAndInject(desc, amount, cardId, cat, day){
+    const tmpl = { id:uid(), desc, amount, cardId, cat, day };
+    state.global.expenseTemplates.push(tmpl);
+    await saveGlobal();
+    const date = buildDateForDay(state.monthKey, day);
+    state.month.expenses.push({ id:uid(), desc, amount, cardId, cat, date, templateId:tmpl.id, isFixed:true });
+    await saveMonth();
+    if(cat === 'savings') await recomputeSavings();
+  }
+
+  async function addWithdrawal(desc, amount, date){
+    state.month.withdrawals.push({ id:uid(), desc, amount, date });
+    await saveMonth();
+    await recomputeSavings();
+    state.modal = null;
+    render();
+  }
+  async function deleteWithdrawalFromMonth(monthKey, id){
+    const fullKey = 'month:'+monthKey;
+    const rec = (monthKey === state.month.key) ? state.month : await loadMonth(fullKey);
+    if(!rec) return;
+    rec.withdrawals = rec.withdrawals.filter(w=>w.id!==id);
+    await sSet(fullKey, rec);
+    if(monthKey === state.month.key) state.month = rec;
+    await recomputeSavings();
+    render();
+  }
+
+  function sumAllocated(){ return (state.global.goals||[]).reduce((s,g)=>s+g.allocated,0); }
+  async function addGoal(name, targetAmount, targetDate){
+    state.global.goals.push({ id:uid(), name, targetAmount, targetDate: targetDate||null, allocated:0 });
+    await saveGlobal();
+  }
+  async function updateGoal(id, name, targetAmount, targetDate){
+    const g = state.global.goals.find(x=>x.id===id);
+    g.name = name; g.targetAmount = targetAmount; g.targetDate = targetDate||null;
+    await saveGlobal();
+  }
+  async function deleteGoal(id){
+    state.global.goals = state.global.goals.filter(g=>g.id!==id);
+    await saveGlobal();
+  }
+  async function allocateToGoal(id, amount){
+    const unalloc = state.savingsTotal - sumAllocated();
+    if(amount > unalloc + 0.001){ alert('No tienes suficiente dinero sin asignar en tu alcancía (disponible: '+fmt.format(Math.max(0,unalloc))+').'); return false; }
+    const g = state.global.goals.find(x=>x.id===id);
+    g.allocated += amount;
+    await saveGlobal();
+    return true;
+  }
+  async function deallocateFromGoal(id, amount){
+    const g = state.global.goals.find(x=>x.id===id);
+    g.allocated = Math.max(0, g.allocated - amount);
+    await saveGlobal();
+  }
+
+  function nextOccurrence(day){
+    if(!day) return null;
+    const now = startOfToday();
+    let d = new Date(now.getFullYear(), now.getMonth(), day);
+    if(d < now) d = new Date(now.getFullYear(), now.getMonth()+1, day);
+    return d;
+  }
+  function daysUntil(d){ return Math.round((d - startOfToday()) / 86400000); }
+  function getReminders(){
+    const items = [];
+    for(const card of state.global.cards){
+      if(card.cutoffDay){
+        const d = nextOccurrence(card.cutoffDay); const du = daysUntil(d);
+        if(du <= 7) items.push({ order:du, urgent: du<=2, text: `${card.name} — corte ${du===0?'es hoy':du===1?'es mañana':'en '+du+' días'}` });
+      }
+      if(card.paymentDay){
+        const d = nextOccurrence(card.paymentDay); const du = daysUntil(d);
+        if(du <= 7) items.push({ order:du, urgent: du<=2, text: `${card.name} — pago ${du===0?'es hoy':du===1?'es mañana':'en '+du+' días'}` });
+      }
+      if(card.minSpend){
+        const sp = spentOnCard(state.month, card.id);
+        if(sp < card.minSpend) items.push({ order:50, urgent:false, text: `${card.name} — faltan ${fmt.format(card.minSpend-sp)} para el mínimo (${fmt.format(sp)} de ${fmt.format(card.minSpend)})` });
+      }
+    }
+    items.sort((a,b)=>a.order-b.order);
+    return items;
+  }
+
+  function render(){
+    const app = document.getElementById('app');
+    if(state.modal && state.modal.type === 'onboarding'){
+      app.innerHTML = renderOnboarding();
+      bindOnboarding();
+      return;
+    }
+
+    let html = '';
+    html += renderHeader();
+    const reminders = getReminders();
+    if(reminders.length){
+      html += `<div class="reminders">` + reminders.map(r=>`<div class="reminder ${r.urgent?'urgent':''}"><span class="rem-icon">💳</span><span>${escapeHtml(r.text)}</span></div>`).join('') + `</div>`;
+    }
+    if(state.showInstallNote){
+      html += `<div class="install-note"><button class="close-note-btn" data-close-install>×</button><b>Instálala en tu teléfono</b>Desde Safari/Chrome en esta página: compartir → "Agregar a pantalla de inicio". Tus datos se guardan en este navegador — usa siempre el mismo para no perderlos.</div>`;
+    }
+    html += renderAlcancia();
+    html += renderGoals();
+    html += renderEnvelopes();
+    html += renderMovements();
+    html += `<button class="fab" data-open-add>+ &nbsp;Agregar gasto</button>`;
+
+    if(state.modal){
+      const t = state.modal.type;
+      if(t==='settings') html += renderSettingsSheet();
+      if(t==='addExpense') html += renderAddExpenseSheet();
+      if(t==='decision') html += renderDecisionModal();
+      if(t==='card') html += renderCardModal();
+      if(t==='incomeManager') html += renderIncomeManager();
+      if(t==='incomeTemplateForm') html += renderIncomeTemplateForm();
+      if(t==='expenseTemplateForm') html += renderExpenseTemplateForm();
+      if(t==='withdraw') html += renderWithdrawModal();
+      if(t==='savingsHistory') html += renderSavingsHistory();
+      if(t==='goalForm') html += renderGoalForm();
+      if(t==='goalDetail') html += renderGoalDetail();
+    }
+
+    app.innerHTML = html;
+    bindEvents();
+  }
+
+  function renderHeader(){
+    return `
+    <header>
+      <div>
+        <p class="month-label">${monthLabel(state.monthKey)}</p>
+        <p class="income-line"><span class="cur">$</span>${fmt.format(monthIncome(state.month)).replace('$','').replace('MX','').trim()}</p>
+        <button class="btn-text" data-open-income-manager>ver ingresos del mes</button>
+      </div>
+      <button class="icon-btn" data-open-settings aria-label="Ajustes">⚙</button>
+    </header>`;
+  }
+
+  function renderAlcancia(){
+    const goals = state.global.goals||[];
+    const unalloc = state.savingsTotal - sumAllocated();
+    return `<div class="alcancia">
+      <span class="pig">🐷</span>
+      <p class="label">Tu alcancía</p>
+      <p class="total">${fmt.format(state.savingsTotal)}</p>
+      ${goals.length ? `<p class="unassigned">Sin asignar a una meta: ${fmt.format(unalloc)}</p>` : ''}
+      <div class="btnrow">
+        <button data-open-withdraw>Retirar</button>
+        <button data-open-savings-history>Ver historial</button>
+      </div>
+    </div>`;
+  }
+
+  function renderGoals(){
+    const goals = state.global.goals||[];
+    if(!goals.length){
+      return `<div style="padding:0 20px;margin-bottom:6px;"><button class="btn-secondary" style="margin-top:0;" data-open-goal-form>+ Crear meta de ahorro</button></div>`;
+    }
+    let out = `<h2 class="section-title">Metas de ahorro</h2><div style="padding:0 20px;">`;
+    for(const g of goals){
+      const pctFilled = g.targetAmount>0 ? Math.min(100, (g.allocated/g.targetAmount)*100) : 0;
+      let dateTxt = '';
+      if(g.targetDate){
+        const days = Math.round((new Date(g.targetDate+'T00:00:00') - startOfToday())/86400000);
+        dateTxt = days>=0 ? `faltan ${days} días` : `venció hace ${Math.abs(days)} días`;
+      }
+      out += `<div class="goal-card" data-open-goal="${g.id}">
+        <div class="goal-top"><span class="gname">${escapeHtml(g.name)}</span>${dateTxt?`<span class="gdate">${dateTxt}</span>`:''}</div>
+        <div class="goal-gauge"><div class="goal-gauge-fill" style="width:${pctFilled}%"></div></div>
+        <div class="goal-nums"><span>${fmt.format(g.allocated)} de ${fmt.format(g.targetAmount)}</span><span>${Math.round(pctFilled)}%</span></div>
+      </div>`;
+    }
+    out += `<button class="btn-secondary" data-open-goal-form>+ Nueva meta</button></div>`;
+    return out;
+  }
+
+  function renderGoalForm(){
+    const m = state.modal;
+    const editing = m.goalId ? state.global.goals.find(g=>g.id===m.goalId) : null;
+    const v = editing || { name:'', targetAmount:'', targetDate:'' };
+    return `<div class="overlay center" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>${editing?'Editar meta':'Nueva meta de ahorro'}</h2>
+        <div class="field"><label>¿Para qué estás ahorrando?</label><input type="text" id="g-name" placeholder="Ej. Viaje, laptop, enganche…" value="${escapeAttr(v.name)}" autofocus></div>
+        <div class="field"><label>Monto objetivo</label><input type="number" id="g-target" min="0" step="0.01" inputmode="decimal" placeholder="0" value="${v.targetAmount||''}"></div>
+        <div class="field"><label>Fecha objetivo (opcional)</label><input type="date" id="g-date" value="${v.targetDate||''}"></div>
+        <button class="btn-primary" data-submit-goal>${editing?'Guardar cambios':'Crear meta'}</button>
+        ${editing?`<button class="btn-danger" data-delete-goal="${editing.id}">Eliminar meta</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  function renderGoalDetail(){
+    const g = state.global.goals.find(x=>x.id===state.modal.goalId);
+    if(!g) return '';
+    const unalloc = state.savingsTotal - sumAllocated();
+    const pctFilled = g.targetAmount>0 ? Math.min(100,(g.allocated/g.targetAmount)*100) : 0;
+    return `<div class="overlay center" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>${escapeHtml(g.name)}</h2>
+        <div class="goal-gauge" style="margin-bottom:8px;"><div class="goal-gauge-fill" style="width:${pctFilled}%"></div></div>
+        <p class="totalline">${fmt.format(g.allocated)} de ${fmt.format(g.targetAmount)} · ${Math.round(pctFilled)}%</p>
+        <p class="totalline">Sin asignar en tu alcancía: <b>${fmt.format(Math.max(0,unalloc))}</b></p>
+        <div class="field"><label>Asignar dinero a esta meta</label><input type="number" id="gd-alloc-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+        <button class="btn-secondary" style="margin-top:0;" data-alloc-goal="${g.id}">Asignar</button>
+        <hr class="sep">
+        <div class="field"><label>Quitar de esta meta</label><input type="number" id="gd-dealloc-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+        <button class="btn-secondary" style="margin-top:0;" data-dealloc-goal="${g.id}">Regresar a sin asignar</button>
+        <hr class="sep">
+        <button class="btn-text" data-edit-goal="${g.id}">Editar meta</button>
+        <button class="btn-danger" data-delete-goal="${g.id}">Eliminar meta</button>
+      </div>
+    </div>`;
+  }
+
+  function renderEnvelopes(){
+    let out = `<div class="envelopes">`;
+    for(const catId of CAT_ORDER){
+      const cat = CATS[catId];
+      const pct = splitsOf(state.month)[catId];
+      const b = budgeted(state.month, catId);
+      const s = spent(state.month, catId);
+      const remaining = b - s;
+      const over = overageOf(state.month, catId);
+      const pctFilled = b > 0 ? Math.min(100, (s/b)*100) : (s>0?100:0);
+      const isOver = over > 0.5;
+      const expanded = state.expandedCat === catId;
+      const decision = state.month.decisions[catId];
+
+      out += `<div class="envelope ${isOver?'over':''}" data-toggle-cat="${catId}">
+        <div class="env-top">
+          <div class="env-title"><h3 style="color:${cat.hex}">${cat.label}</h3><span class="env-pct">${Math.round(pct*100)}%</span></div>
+          ${isOver ? `<span class="env-flag">excedido</span>` : ''}
+        </div>
+        <div class="gauge"><div class="gauge-fill" style="width:${pctFilled}%; background:${isOver?'var(--alert)':cat.hex}"></div></div>
+        <div class="env-nums">
+          <span><b>${fmt.format(s)}</b> de ${fmt.format(b)}</span>
+          <span>${remaining>=0? 'quedan '+fmt.format(remaining) : 'excedido por '+fmt.format(Math.abs(remaining))}</span>
+        </div>`;
+
+      if(expanded){
+        out += `<div class="env-detail">`;
+        if(isOver){
+          out += `<div class="decision-row">
+            <span>Te pasaste por ${fmt.format(over)}. ¿Qué hacemos?</span>
+            <select data-decision-select="${catId}">
+              <option value="none" ${decision==null?'selected':''}>Sin decidir</option>
+              <option value="defer" ${decision==='defer'?'selected':''}>Restar del próximo mes</option>
+              <option value="ignore" ${decision==='ignore'?'selected':''}>Solo aviso</option>
+            </select>
+          </div>`;
+        }
+        const items = (state.month.expenses||[]).filter(e=>e.cat===catId).sort((a,b2)=>b2.date.localeCompare(a.date));
+        if(items.length===0){ out += `<div class="empty-note">Sin movimientos todavía en esta categoría.</div>`; }
+        else{
+          for(const e of items){
+            const card = state.global.cards.find(c=>c.id===e.cardId);
+            out += `<div class="env-exp-item">
+              <div class="env-exp-main"><span class="d">${escapeHtml(e.desc)}${e.templateId?'<span class="tag-fijo">fijo</span>':''}</span><span class="c">${card?escapeHtml(card.name):'—'} · ${e.date}</span></div>
+              <span class="env-exp-amt">${fmt2.format(e.amount)}</span>
+              <button class="del-x" data-del-expense="${e.id}" aria-label="Eliminar">✕</button>
+            </div>`;
+          }
+        }
+        out += `</div>`;
+      }
+      out += `</div>`;
+    }
+    out += `</div>`;
+    return out;
+  }
+
+  function renderMovements(){
+    const all = [...(state.month.expenses||[])].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12);
+    let out = `<h2 class="section-title">Movimientos recientes</h2><div class="movements">`;
+    if(all.length===0) out += `<div class="empty-note" style="padding:0 4px 12px;">Aún no registras gastos este mes. Toca "Agregar gasto" para empezar.</div>`;
+    for(const e of all){
+      const cat = CATS[e.cat];
+      const card = state.global.cards.find(c=>c.id===e.cardId);
+      out += `<div class="mv-row">
+        <span class="mv-dot" style="background:${cat.hex}"></span>
+        <div class="mv-mid">
+          <div class="mv-desc">${escapeHtml(e.desc)}${e.templateId?'<span class="tag-fijo">fijo</span>':''}</div>
+          <div class="mv-sub">${card?escapeHtml(card.name):'—'} · ${cat.label} · ${e.date}</div>
+        </div>
+        <div class="mv-amt">${fmt2.format(e.amount)}</div>
+        <button class="mv-del" data-del-expense="${e.id}" aria-label="Eliminar">✕</button>
+      </div>`;
+    }
+    out += `</div>`;
+    return out;
+  }
+
+  function renderAddExpenseSheet(){
+    const draft = state.draftExpense || {};
+    const cardOpts = state.global.cards.map(c=>`<option value="${c.id}" ${draft.cardId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
+    const selectedCat = draft.cat || 'needs';
+    return `<div class="overlay" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Agregar gasto</h2>
+        <div class="field"><label>¿Qué fue?</label><input type="text" id="f-desc" placeholder="Ej. Café, gasolina, renta…" value="${escapeAttr(draft.desc||'')}" autofocus></div>
+        <div class="row-2">
+          <div class="field"><label>Monto</label><input type="number" id="f-amount" placeholder="0" min="0" step="0.01" inputmode="decimal" value="${draft.amount||''}"></div>
+          <div class="field"><label>Fecha</label><input type="date" id="f-date" value="${draft.date||todayISO()}"></div>
+        </div>
+        <div class="field"><label>Tarjeta</label>
+          <select id="f-card">${cardOpts || '<option value="">Sin tarjetas todavía</option>'}<option value="__new__">+ Agregar tarjeta nueva</option></select>
+        </div>
+        <div class="field"><label>Categoría</label>
+          <div class="chip-row">
+            <button type="button" class="chip ${selectedCat==='needs'?'active':''}" data-cat="needs">Necesidades</button>
+            <button type="button" class="chip ${selectedCat==='wants'?'active':''}" data-cat="wants">Deseos</button>
+            <button type="button" class="chip ${selectedCat==='savings'?'active':''}" data-cat="savings">Ahorro</button>
+          </div>
+        </div>
+        <label class="checkbox-field"><input type="checkbox" id="f-fixed" ${draft.fixed?'checked':''}> Es un gasto fijo (se repetirá cada mes)</label>
+        <button class="btn-primary" data-submit-expense>Guardar gasto</button>
+      </div>
+    </div>`;
+  }
+
+  function renderSettingsSheet(){
+    const sp = splitsOf(state.month);
+    const cardsHtml = state.global.cards.map(c=>{
+      const bits = [];
+      if(c.cutoffDay) bits.push('corte día '+c.cutoffDay);
+      if(c.paymentDay) bits.push('pago día '+c.paymentDay);
+      if(c.minSpend) bits.push('mínimo '+fmt.format(c.minSpend));
+      return `<div class="list-row"><div class="ci"><div class="n">${escapeHtml(c.name)}</div>${bits.length?`<div class="s">${bits.join(' · ')}</div>`:''}</div><button data-edit-card="${c.id}">Editar</button></div>`;
+    }).join('') || '<p style="font-size:13px;color:var(--ink-soft);">Sin tarjetas todavía.</p>';
+
+    const incTplHtml = state.global.incomeTemplates.map(t=>{
+      const daysTxt = t.days.length>1 ? 'días '+t.days.join(' y ') : 'día '+t.days[0];
+      return `<div class="list-row"><div class="ci"><div class="n">${escapeHtml(t.desc)}</div><div class="s">${fmt.format(t.amount)} · ${daysTxt} · total ${fmt.format(t.amount*t.days.length)}/mes</div></div><button data-del-income-template="${t.id}">Eliminar</button></div>`;
+    }).join('') || '<p style="font-size:13px;color:var(--ink-soft);">Sin ingresos recurrentes.</p>';
+
+    const expTplHtml = state.global.expenseTemplates.map(t=>{
+      const card = state.global.cards.find(c=>c.id===t.cardId);
+      return `<div class="list-row"><div class="ci"><div class="n">${escapeHtml(t.desc)}</div><div class="s">${fmt.format(t.amount)} · ${card?escapeHtml(card.name):'—'} · ${CATS[t.cat].label} · día ${t.day}</div></div><button data-del-expense-template="${t.id}">Eliminar</button></div>`;
+    }).join('') || '<p style="font-size:13px;color:var(--ink-soft);">Sin gastos fijos.</p>';
+
+    return `<div class="overlay" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Ajustes</h2>
+
+        <h3>Reparto del presupuesto</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 12px;">Si tus gastos fijos superan el 50%, ajusta los porcentajes aquí. Debe sumar 100%.</p>
+        <div class="split-row"><span class="sw" style="background:${CATS.needs.hex}"></span><label>Necesidades</label><input type="number" id="sp-needs" value="${Math.round(sp.needs*100)}" min="0" max="100"> %</div>
+        <div class="split-row"><span class="sw" style="background:${CATS.wants.hex}"></span><label>Deseos</label><input type="number" id="sp-wants" value="${Math.round(sp.wants*100)}" min="0" max="100"> %</div>
+        <div class="split-row"><span class="sw" style="background:${CATS.savings.hex}"></span><label>Ahorro</label><input type="number" id="sp-savings" value="${Math.round(sp.savings*100)}" min="0" max="100"> %</div>
+        <p class="split-sum ok" id="split-sum-note">Suma: 100%</p>
+        <button class="btn-text" type="button" data-suggest-splits>Calcular según tu gasto real de este mes</button>
+        <button class="btn-secondary" style="margin-top:0;" data-submit-splits>Guardar reparto</button>
+
+        <hr class="sep">
+        <h3>Ingresos recurrentes</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 12px;">Sueldos que se agregan solos cada mes (incluye quincena: dos fechas de pago).</p>
+        <div>${incTplHtml}</div>
+        <button class="btn-secondary" data-open-income-template>+ Agregar ingreso recurrente</button>
+
+        <hr class="sep">
+        <h3>Gastos fijos recurrentes</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 12px;">Rentas, suscripciones o pagos que se domicilian solos cada mes.</p>
+        <div>${expTplHtml}</div>
+        <button class="btn-secondary" data-open-expense-template>+ Agregar gasto fijo</button>
+
+        <hr class="sep">
+        <h3>Tus tarjetas</h3>
+        <div>${cardsHtml}</div>
+        <button class="btn-secondary" data-add-card-open>+ Agregar tarjeta</button>
+      </div>
+    </div>`;
+  }
+
+  function renderIncomeManager(){
+    const total = monthIncome(state.month);
+    const rows = [...state.month.incomes].sort((a,b)=>(a.day||99)-(b.day||99)).map(i=>{
+      return `<div class="list-row"><div class="ci"><div class="n">${escapeHtml(i.desc)}${i.templateId?'<span class="tag-fijo">recurrente</span>':''}</div><div class="s">${fmt.format(i.amount)}${i.day?' · día '+i.day:''}</div></div><button data-del-income="${i.id}">Quitar</button></div>`;
+    }).join('') || '<p style="font-size:13px;color:var(--ink-soft);">Sin ingresos registrados este mes.</p>';
+
+    return `<div class="overlay" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Ingresos de ${monthLabel(state.monthKey)}</h2>
+        <p class="totalline">Total del mes: <b>${fmt.format(total)}</b></p>
+        <div>${rows}</div>
+        <hr class="sep">
+        <h3>Agregar ingreso</h3>
+        <div class="field"><label>Descripción</label><input type="text" id="im-desc" placeholder="Ej. Sueldo, freelance…"></div>
+        <div class="row-2">
+          <div class="field"><label>Monto</label><input type="number" id="im-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+          <div class="field"><label>Día (opcional)</label><input type="number" id="im-day" min="1" max="31" placeholder="—"></div>
+        </div>
+        <label class="checkbox-field"><input type="checkbox" id="im-repeat"> Repetir cada mes en este día</label>
+        <button class="btn-secondary" style="margin-top:0;" data-submit-income-entry>Agregar</button>
+      </div>
+    </div>`;
+  }
+
+  function renderIncomeTemplateForm(){
+    return `<div class="overlay center" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Ingreso recurrente</h2>
+        <div class="field"><label>Descripción</label><input type="text" id="it-desc" placeholder="Ej. Sueldo" autofocus></div>
+        <div class="field"><label>Monto por pago</label><input type="number" id="it-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+        <div class="row-2">
+          <div class="field"><label>Día de pago</label><input type="number" id="it-day1" min="1" max="31" placeholder="Ej. 15"></div>
+          <div class="field"><label>Segundo día (quincena, opcional)</label><input type="number" id="it-day2" min="1" max="31" placeholder="Ej. 30"></div>
+        </div>
+        <p class="hint" style="margin-bottom:14px;">Se agregará automáticamente este mes y todos los siguientes.</p>
+        <button class="btn-primary" data-submit-income-template>Guardar</button>
+      </div>
+    </div>`;
+  }
+
+  function renderExpenseTemplateForm(){
+    const cardOpts = state.global.cards.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    return `<div class="overlay center" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Gasto fijo recurrente</h2>
+        <div class="field"><label>Descripción</label><input type="text" id="et-desc" placeholder="Ej. Renta, Netflix…" autofocus></div>
+        <div class="row-2">
+          <div class="field"><label>Monto</label><input type="number" id="et-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+          <div class="field"><label>Día del mes</label><input type="number" id="et-day" min="1" max="31" placeholder="Ej. 5"></div>
+        </div>
+        <div class="field"><label>Tarjeta</label><select id="et-card">${cardOpts || '<option value="">Agrega una tarjeta primero</option>'}</select></div>
+        <div class="field"><label>Categoría</label>
+          <div class="chip-row">
+            <button type="button" class="chip active" data-etcat="needs">Necesidades</button>
+            <button type="button" class="chip" data-etcat="wants">Deseos</button>
+            <button type="button" class="chip" data-etcat="savings">Ahorro</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:14px;">Se agregará automáticamente este mes y todos los siguientes.</p>
+        <button class="btn-primary" data-submit-expense-template>Guardar</button>
+      </div>
+    </div>`;
+  }
+
+  function renderCardModal(){
+    const m = state.modal;
+    const editing = m.cardId ? state.global.cards.find(c=>c.id===m.cardId) : null;
+    const v = editing || { name:'', cutoffDay:'', paymentDay:'', minSpend:'' };
+    return `<div class="overlay center" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>${editing ? 'Editar tarjeta' : 'Nueva tarjeta'}</h2>
+        <div class="field"><label>Nombre</label><input type="text" id="c-name" placeholder="Ej. BBVA débito" value="${escapeAttr(v.name)}" autofocus></div>
+        <div class="row-3">
+          <div class="field"><label>Día de corte</label><input type="number" id="c-cutoff" min="1" max="31" placeholder="—" value="${v.cutoffDay||''}"></div>
+          <div class="field"><label>Día de pago</label><input type="number" id="c-payment" min="1" max="31" placeholder="—" value="${v.paymentDay||''}"></div>
+        </div>
+        <div class="field"><label>Gasto mínimo mensual (opcional)</label><input type="number" id="c-min" min="0" step="0.01" inputmode="decimal" placeholder="Ej. 1000" value="${v.minSpend||''}"></div>
+        <p class="hint">Te avisaremos cuando el corte o pago esté a 7 días o menos, y si no llegas al mínimo.</p>
+        <button class="btn-primary" data-submit-card>${editing?'Guardar cambios':'Agregar tarjeta'}</button>
+        ${editing ? `<button class="btn-danger" data-delete-card="${editing.id}">Eliminar tarjeta</button>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderWithdrawModal(){
+    return `<div class="overlay center" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Retirar de tu alcancía</h2>
+        <p class="totalline">Disponible: <b>${fmt.format(state.savingsTotal)}</b></p>
+        <div class="field"><label>¿Para qué?</label><input type="text" id="w-desc" placeholder="Ej. Emergencia, viaje…" autofocus></div>
+        <div class="row-2">
+          <div class="field"><label>Monto</label><input type="number" id="w-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+          <div class="field"><label>Fecha</label><input type="date" id="w-date" value="${todayISO()}"></div>
+        </div>
+        <button class="btn-primary" data-submit-withdraw>Registrar retiro</button>
+      </div>
+    </div>`;
+  }
+
+  function renderSavingsHistory(){
+    const rows = state.savingsHistory.map(h=>{
+      const sign = h.type==='deposit' ? '+' : '−';
+      const cls = h.type==='deposit' ? 'pos' : 'neg';
+      const del = h.type==='withdrawal' ? `<button class="del-x" data-del-withdrawal="${h.monthKey}|${h.id}" aria-label="Eliminar">✕</button>` : '';
+      return `<div class="hist-row"><div class="ci"><div>${escapeHtml(h.desc)}</div><div class="s" style="font-size:11px;color:var(--ink-soft);">${monthLabel(h.monthKey)} · ${h.date}</div></div><span class="hist-amt ${cls}">${sign}${fmt2.format(h.amount)}</span>${del}</div>`;
+    }).join('') || '<p style="font-size:13px;color:var(--ink-soft);">Sin movimientos de ahorro todavía.</p>';
+    return `<div class="overlay" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Historial de tu alcancía</h2>
+        <p class="totalline">Total actual: <b>${fmt.format(state.savingsTotal)}</b></p>
+        <div>${rows}</div>
+      </div>
+    </div>`;
+  }
+
+  function renderDecisionModal(){
+    const item = state.decisionQueue[0];
+    const cat = CATS[item.cat];
+    const monthTxt = item.isCurrentMonth ? 'este mes' : `en ${monthLabel(item.monthKey)}`;
+    return `<div class="overlay center">
+      <div class="sheet decision-modal" data-stop>
+        <h2>Te pasaste en ${cat.label}</h2>
+        <p>Te excediste <span class="amt">${fmt.format(item.overage)}</span> ${monthTxt}. ¿Qué quieres hacer con ese excedente?</p>
+        <button class="btn-primary" data-decision="defer">Restarlo del presupuesto del próximo mes</button>
+        <button class="btn-secondary" data-decision="ignore">Fue solo un aviso, no afectar nada</button>
+        ${state.decisionQueue.length>1 ? `<p style="text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:10px;">${state.decisionQueue.length-1} decisión(es) más pendiente(s)</p>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderOnboarding(){
+    return `<div class="loading-screen" style="justify-content:flex-start;padding-top:12vh;">
+      <div style="max-width:380px;width:100%;padding:0 24px;">
+        <p class="month-label" style="text-align:left;">Bienvenido</p>
+        <h2 style="font-family:var(--font-display);font-size:24px;margin:0 0 6px;">Armemos tus sobres</h2>
+        <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 22px;">Con la regla 50/30/20: 50% Necesidades, 30% Deseos, 20% Ahorro. Podrás ajustar todo después en Ajustes, incluyendo sueldos programados y gastos fijos.</p>
+        <div class="field"><label>Tu ingreso de este mes (MXN)</label><input type="number" id="ob-income" placeholder="18000" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="field"><label>Tu primera tarjeta</label><input type="text" id="ob-card" placeholder="Ej. BBVA débito"></div>
+        <button class="btn-primary" data-submit-onboarding>Empezar</button>
+      </div>
+    </div>`;
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function escapeAttr(s){ return escapeHtml(s); }
+
+  function bindOnboarding(){
+    document.querySelector('[data-submit-onboarding]').addEventListener('click', ()=>{
+      const income = parseFloat(document.getElementById('ob-income').value)||0;
+      const card = document.getElementById('ob-card').value.trim();
+      if(!card){ alert('Agrega el nombre de al menos una tarjeta.'); return; }
+      submitOnboarding(income, card);
+    });
+  }
+
+  function captureExpenseDraft(){
+    const desc = document.getElementById('f-desc');
+    const amount = document.getElementById('f-amount');
+    const date = document.getElementById('f-date');
+    const fixed = document.getElementById('f-fixed');
+    const activeChip = document.querySelector('.chip[data-cat].active');
+    state.draftExpense = {
+      desc: desc ? desc.value : '', amount: amount ? amount.value : '', date: date ? date.value : '',
+      cat: activeChip ? activeChip.getAttribute('data-cat') : 'needs',
+      fixed: fixed ? fixed.checked : false, cardId: null
+    };
+  }
+
+  function bindEvents(){
+    const app = document.getElementById('app');
+
+    const closeInstall = app.querySelector('[data-close-install]');
+    if(closeInstall) closeInstall.addEventListener('click', ()=>{ state.showInstallNote=false; render(); });
+
+    const openIncomeMgr = app.querySelector('[data-open-income-manager]');
+    if(openIncomeMgr) openIncomeMgr.addEventListener('click', ()=>{ state.modal={type:'incomeManager'}; render(); });
+
+    const settingsBtn = app.querySelector('[data-open-settings]');
+    if(settingsBtn) settingsBtn.addEventListener('click', ()=>{ state.modal={type:'settings'}; render(); });
+
+    const openWithdraw = app.querySelector('[data-open-withdraw]');
+    if(openWithdraw) openWithdraw.addEventListener('click', ()=>{ state.modal={type:'withdraw'}; render(); });
+    const openSavHist = app.querySelector('[data-open-savings-history]');
+    if(openSavHist) openSavHist.addEventListener('click', ()=>{ state.modal={type:'savingsHistory'}; render(); });
+
+    app.querySelectorAll('[data-toggle-cat]').forEach(el=>{
+      el.addEventListener('click', (ev)=>{
+        if(ev.target.closest('[data-decision-select]') || ev.target.closest('[data-del-expense]')) return;
+        const cat = el.getAttribute('data-toggle-cat');
+        state.expandedCat = state.expandedCat===cat ? null : cat;
+        render();
+      });
+    });
+
+    app.querySelectorAll('[data-decision-select]').forEach(el=>{
+      el.addEventListener('click', ev=>ev.stopPropagation());
+      el.addEventListener('change', ev=>{ ev.stopPropagation(); changeDecisionForCurrentCat(el.getAttribute('data-decision-select'), el.value); });
+    });
+
+    app.querySelectorAll('[data-del-expense]').forEach(el=>{
+      el.addEventListener('click', (ev)=>{
+        ev.stopPropagation();
+        const id = el.getAttribute('data-del-expense');
+        const e = state.month.expenses.find(x=>x.id===id);
+        const msg = e && e.templateId
+          ? 'Este es un gasto fijo. Se quitará solo de este mes; volverá a aparecer el próximo mes salvo que elimines la plantilla en Ajustes → Gastos fijos recurrentes. ¿Continuar?'
+          : '¿Eliminar este movimiento?';
+        if(confirm(msg)) deleteExpense(id);
+      });
+    });
+
+    const openAdd = app.querySelector('[data-open-add]');
+    if(openAdd) openAdd.addEventListener('click', ()=>{ state.draftExpense=null; state.modal={type:'addExpense'}; render(); });
+
+    const overlay = app.querySelector('[data-close-overlay]');
+    if(overlay){
+      overlay.addEventListener('click', ()=>{ state.modal=null; state.draftExpense=null; render(); });
+      const stop = app.querySelector('[data-stop]');
+      if(stop) stop.addEventListener('click', ev=>ev.stopPropagation());
+    }
+    const closeModalBtn = app.querySelector('[data-close-modal]');
+    if(closeModalBtn) closeModalBtn.addEventListener('click', ()=>{ state.modal=null; state.draftExpense=null; render(); });
+
+    const catChips = app.querySelectorAll('.chip[data-cat]');
+    catChips.forEach(chip=>{ chip.addEventListener('click', ()=>{ catChips.forEach(c=>c.classList.remove('active')); chip.classList.add('active'); }); });
+    const cardSelect = app.querySelector('#f-card');
+    if(cardSelect){
+      cardSelect.addEventListener('change', ()=>{
+        if(cardSelect.value === '__new__'){ captureExpenseDraft(); state.modal = { type:'card', cardId:null, returnTo:'addExpense' }; render(); }
+      });
+    }
+    const submitExpense = app.querySelector('[data-submit-expense]');
+    if(submitExpense) submitExpense.addEventListener('click', ()=>{
+      const desc = document.getElementById('f-desc').value.trim();
+      const amount = parseFloat(document.getElementById('f-amount').value);
+      const cardId = document.getElementById('f-card').value;
+      const date = document.getElementById('f-date').value || todayISO();
+      const makeFixed = document.getElementById('f-fixed').checked;
+      const activeChip = app.querySelector('.chip[data-cat].active');
+      const cat = activeChip ? activeChip.getAttribute('data-cat') : 'needs';
+      if(!desc){ alert('Escribe qué fue el gasto.'); return; }
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      if(!cardId || cardId==='__new__'){ alert('Selecciona o agrega una tarjeta.'); return; }
+      addExpense(desc, amount, cardId, cat, date, makeFixed);
+    });
+
+    const spInputs = ['sp-needs','sp-wants','sp-savings'].map(id=>app.querySelector('#'+id));
+    const sumNote = app.querySelector('#split-sum-note');
+    const submitSplitsBtn = app.querySelector('[data-submit-splits]');
+    function refreshSum(){
+      if(!spInputs[0]) return;
+      const total = spInputs.reduce((s,el)=>s+(parseFloat(el.value)||0),0);
+      if(sumNote){ sumNote.textContent = 'Suma: '+total+'%'; sumNote.className = 'split-sum ' + (total===100 ? 'ok':'bad'); }
+      if(submitSplitsBtn) submitSplitsBtn.disabled = (total!==100);
+    }
+    spInputs.forEach(el=>{ if(el) el.addEventListener('input', refreshSum); });
+    if(submitSplitsBtn) submitSplitsBtn.addEventListener('click', ()=>{
+      const needs = parseFloat(spInputs[0].value)||0, wants = parseFloat(spInputs[1].value)||0, savings = parseFloat(spInputs[2].value)||0;
+      if(needs+wants+savings !== 100){ alert('Los porcentajes deben sumar 100%.'); return; }
+      updateSplits({ needs:needs/100, wants:wants/100, savings:savings/100 });
+    });
+    const suggestSplitsBtn = app.querySelector('[data-suggest-splits]');
+    if(suggestSplitsBtn) suggestSplitsBtn.addEventListener('click', ()=>{
+      const raw = { needs: spent(state.month,'needs'), wants: spent(state.month,'wants'), savings: spent(state.month,'savings') };
+      const totalSpent = raw.needs+raw.wants+raw.savings;
+      if(totalSpent<=0){ alert('Todavía no tienes gastos registrados este mes para basarnos en ellos.'); return; }
+      let pct = {}; for(const c of CAT_ORDER) pct[c] = Math.round((raw[c]/totalSpent)*100);
+      let diff = 100-(pct.needs+pct.wants+pct.savings);
+      const maxCat = CAT_ORDER.reduce((a,b)=>pct[a]>=pct[b]?a:b);
+      pct[maxCat]+=diff;
+      spInputs[0].value = pct.needs; spInputs[1].value = pct.wants; spInputs[2].value = pct.savings;
+      refreshSum();
+    });
+
+    const openIncTpl = app.querySelector('[data-open-income-template]');
+    if(openIncTpl) openIncTpl.addEventListener('click', ()=>{ state.modal={type:'incomeTemplateForm'}; render(); });
+    app.querySelectorAll('[data-del-income-template]').forEach(el=>{
+      el.addEventListener('click', ()=>{ if(confirm('Ya no se agregará automáticamente los próximos meses. ¿Eliminar?')) removeIncomeTemplate(el.getAttribute('data-del-income-template')); });
+    });
+    const submitIncTpl = app.querySelector('[data-submit-income-template]');
+    if(submitIncTpl) submitIncTpl.addEventListener('click', async ()=>{
+      const desc = document.getElementById('it-desc').value.trim();
+      const amount = parseFloat(document.getElementById('it-amount').value);
+      const day1 = parseInt(document.getElementById('it-day1').value);
+      const day2 = parseInt(document.getElementById('it-day2').value);
+      if(!desc){ alert('Ponle un nombre a este ingreso.'); return; }
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      if(!day1 || day1<1 || day1>31){ alert('Ingresa un día de pago válido.'); return; }
+      const days = [day1]; if(day2 && day2>=1 && day2<=31 && day2!==day1) days.push(day2);
+      await addIncomeTemplateAndInject(desc, amount, days);
+      state.modal = { type:'settings' }; render();
+    });
+
+    const openExpTpl = app.querySelector('[data-open-expense-template]');
+    if(openExpTpl) openExpTpl.addEventListener('click', ()=>{ state.modal={type:'expenseTemplateForm'}; render(); });
+    app.querySelectorAll('[data-del-expense-template]').forEach(el=>{
+      el.addEventListener('click', ()=>{ if(confirm('Ya no se agregará automáticamente los próximos meses. No afecta lo ya generado. ¿Eliminar?')) removeExpenseTemplate(el.getAttribute('data-del-expense-template')); });
+    });
+    const etChips = app.querySelectorAll('.chip[data-etcat]');
+    etChips.forEach(chip=>{ chip.addEventListener('click', ()=>{ etChips.forEach(c=>c.classList.remove('active')); chip.classList.add('active'); }); });
+    const submitExpTpl = app.querySelector('[data-submit-expense-template]');
+    if(submitExpTpl) submitExpTpl.addEventListener('click', async ()=>{
+      const desc = document.getElementById('et-desc').value.trim();
+      const amount = parseFloat(document.getElementById('et-amount').value);
+      const day = parseInt(document.getElementById('et-day').value);
+      const cardId = document.getElementById('et-card').value;
+      const activeChip = app.querySelector('.chip[data-etcat].active');
+      const cat = activeChip ? activeChip.getAttribute('data-etcat') : 'needs';
+      if(!desc){ alert('Ponle un nombre a este gasto fijo.'); return; }
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      if(!day || day<1 || day>31){ alert('Ingresa un día del mes válido.'); return; }
+      if(!cardId){ alert('Selecciona una tarjeta (agrégala primero en Ajustes si no tienes ninguna).'); return; }
+      await addExpenseTemplateAndInject(desc, amount, cardId, cat, day);
+      state.modal = { type:'settings' }; render();
+    });
+
+    const addCardOpenBtn = app.querySelector('[data-add-card-open]');
+    if(addCardOpenBtn) addCardOpenBtn.addEventListener('click', ()=>{ state.modal = { type:'card', cardId:null, returnTo:'settings' }; render(); });
+    app.querySelectorAll('[data-edit-card]').forEach(el=>{
+      el.addEventListener('click', ()=>{ state.modal = { type:'card', cardId: el.getAttribute('data-edit-card'), returnTo:'settings' }; render(); });
+    });
+
+    const submitCardBtn = app.querySelector('[data-submit-card]');
+    if(submitCardBtn) submitCardBtn.addEventListener('click', async ()=>{
+      const name = document.getElementById('c-name').value.trim();
+      if(!name){ alert('Ponle un nombre a la tarjeta.'); return; }
+      const cutoffDay = parseInt(document.getElementById('c-cutoff').value) || null;
+      const paymentDay = parseInt(document.getElementById('c-payment').value) || null;
+      const minSpend = parseFloat(document.getElementById('c-min').value) || null;
+      const returnTo = state.modal.returnTo, cardId = state.modal.cardId;
+      const newId = await saveCard({ id: cardId, name, cutoffDay, paymentDay, minSpend });
+      if(returnTo === 'addExpense'){ state.draftExpense = state.draftExpense || {}; state.draftExpense.cardId = newId; state.modal = { type:'addExpense' }; }
+      else{ state.modal = { type:'settings' }; }
+      render();
+    });
+    const deleteCardBtn = app.querySelector('[data-delete-card]');
+    if(deleteCardBtn) deleteCardBtn.addEventListener('click', async ()=>{
+      if(!confirm('¿Eliminar esta tarjeta?')) return;
+      const ok = await removeCardGlobal(deleteCardBtn.getAttribute('data-delete-card'));
+      if(ok){ state.modal = { type:'settings' }; render(); }
+    });
+
+    app.querySelectorAll('[data-del-income]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const id = el.getAttribute('data-del-income');
+        const i = state.month.incomes.find(x=>x.id===id);
+        const msg = i && i.templateId ? 'Es un ingreso recurrente. Se quitará solo de este mes. ¿Continuar?' : '¿Quitar este ingreso?';
+        if(confirm(msg)) removeIncomeEntry(id);
+      });
+    });
+    const submitIncEntry = app.querySelector('[data-submit-income-entry]');
+    if(submitIncEntry) submitIncEntry.addEventListener('click', ()=>{
+      const desc = document.getElementById('im-desc').value.trim();
+      const amount = parseFloat(document.getElementById('im-amount').value);
+      const day = parseInt(document.getElementById('im-day').value) || null;
+      const repeat = document.getElementById('im-repeat').checked;
+      if(!desc){ alert('Escribe una descripción.'); return; }
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      if(repeat && !day){ alert('Para repetir cada mes, indica el día.'); return; }
+      addIncomeManual(desc, amount, day, repeat);
+    });
+
+    const submitWithdraw = app.querySelector('[data-submit-withdraw]');
+    if(submitWithdraw) submitWithdraw.addEventListener('click', ()=>{
+      const desc = document.getElementById('w-desc').value.trim() || 'Retiro';
+      const amount = parseFloat(document.getElementById('w-amount').value);
+      const date = document.getElementById('w-date').value || todayISO();
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      if(amount > state.savingsTotal){ if(!confirm('El monto es mayor a tu ahorro acumulado actual. ¿Registrar de todas formas?')) return; }
+      addWithdrawal(desc, amount, date);
+    });
+
+    app.querySelectorAll('[data-del-withdrawal]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const [monthKey, id] = el.getAttribute('data-del-withdrawal').split('|');
+        if(confirm('¿Eliminar este retiro?')) deleteWithdrawalFromMonth(monthKey, id);
+      });
+    });
+
+    app.querySelectorAll('[data-decision]').forEach(el=>{ el.addEventListener('click', ()=> resolveDecision(el.getAttribute('data-decision'))); });
+
+    // ----- goals -----
+    app.querySelectorAll('[data-open-goal-form]').forEach(el=>{
+      el.addEventListener('click', ()=>{ state.modal = { type:'goalForm', goalId:null }; render(); });
+    });
+    app.querySelectorAll('[data-open-goal]').forEach(el=>{
+      el.addEventListener('click', ()=>{ state.modal = { type:'goalDetail', goalId: el.getAttribute('data-open-goal') }; render(); });
+    });
+    const submitGoalBtn = app.querySelector('[data-submit-goal]');
+    if(submitGoalBtn) submitGoalBtn.addEventListener('click', async ()=>{
+      const name = document.getElementById('g-name').value.trim();
+      const target = parseFloat(document.getElementById('g-target').value);
+      const date = document.getElementById('g-date').value || null;
+      if(!name){ alert('Ponle un nombre a tu meta.'); return; }
+      if(!target || target<=0){ alert('Ingresa un monto objetivo válido.'); return; }
+      if(state.modal.goalId){ await updateGoal(state.modal.goalId, name, target, date); }
+      else{ await addGoal(name, target, date); }
+      state.modal = null; render();
+    });
+    app.querySelectorAll('[data-edit-goal]').forEach(el=>{
+      el.addEventListener('click', ()=>{ state.modal = { type:'goalForm', goalId: el.getAttribute('data-edit-goal') }; render(); });
+    });
+    app.querySelectorAll('[data-delete-goal]').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        if(!confirm('¿Eliminar esta meta? El dinero asignado regresará a "sin asignar" en tu alcancía.')) return;
+        await deleteGoal(el.getAttribute('data-delete-goal'));
+        state.modal = null; render();
+      });
+    });
+    app.querySelectorAll('[data-alloc-goal]').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        const amount = parseFloat(document.getElementById('gd-alloc-amount').value);
+        if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+        const ok = await allocateToGoal(el.getAttribute('data-alloc-goal'), amount);
+        if(ok) render();
+      });
+    });
+    app.querySelectorAll('[data-dealloc-goal]').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        const amount = parseFloat(document.getElementById('gd-dealloc-amount').value);
+        if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+        await deallocateFromGoal(el.getAttribute('data-dealloc-goal'), amount);
+        render();
+      });
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
