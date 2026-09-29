@@ -41,20 +41,8 @@
 
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--ink);
-    font-family:var(--font-body);
-    min-height:100vh;
-    -webkit-font-smoothing:antialiased;
-    padding-bottom:100px;
-  }
-  #app{
-    max-width:480px;
-    margin:0 auto;
-    min-height:100vh;
-    position:relative;
-  }
+  body{ background:var(--bg); color:var(--ink); font-family:var(--font-body); min-height:100vh; -webkit-font-smoothing:antialiased; padding-bottom:100px; }
+  #app{ max-width:480px; margin:0 auto; min-height:100vh; position:relative; }
   ::selection{ background:var(--wants-soft); }
 
   .loading-screen{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; gap:14px; }
@@ -78,10 +66,10 @@
   .alcancia .pig{ position:absolute; right:14px; top:10px; font-size:44px; opacity:0.18; }
   .alcancia .label{ font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.85; margin:0 0 4px; font-weight:500; }
   .alcancia .total{ font-family:var(--font-display); font-size:30px; font-weight:600; margin:0 0 14px; }
+  .alcancia .unassigned{ font-size:11.5px; opacity:0.85; margin:-8px 0 14px; position:relative; z-index:1; }
   .alcancia .btnrow{ display:flex; gap:8px; position:relative; z-index:1; }
   .alcancia .btnrow button{ flex:1; background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.35); color:#fff; padding:10px; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:var(--font-body); }
   .alcancia .btnrow button:active{ background:rgba(255,255,255,0.28); }
-  .alcancia .unassigned{ font-size:11.5px; opacity:0.85; margin:-8px 0 14px; position:relative; z-index:1; }
 
   .goal-card{ background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:10px; cursor:pointer; }
   .goal-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:8px; }
@@ -205,11 +193,16 @@
   };
   const CAT_ORDER = ['needs','wants','savings'];
   const DEFAULT_SPLITS = { needs:0.5, wants:0.3, savings:0.2 };
+  const TZ = 'America/Tijuana';
 
   const fmt = new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:0 });
   const fmt2 = new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:2 });
 
-  function monthKeyFromDate(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+  function isoOf(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function fromISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
+  function todayISO(){ return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date()); }
+  function startOfToday(){ return fromISO(todayISO()); }
+  function monthKeyToday(){ return todayISO().slice(0,7); }
   function monthLabel(key){
     const [y,m] = key.split('-').map(Number);
     const d = new Date(y, m-1, 1);
@@ -217,8 +210,6 @@
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-  function todayISO(){ return new Date().toISOString().slice(0,10); }
-  function startOfToday(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
   function buildDateForDay(monthKey, day){
     const [y,m] = monthKey.split('-').map(Number);
     const daysInMonth = new Date(y, m, 0).getDate();
@@ -234,16 +225,15 @@
     try{ localStorage.setItem(key, JSON.stringify(value)); return true; }
     catch(e){ console.error('storage set failed', key, e); return false; }
   }
-  async function sListKeys(prefix){
-    try{
-      const keys = [];
-      for(let i=0;i<localStorage.length;i++){
-        const k = localStorage.key(i);
-        if(k && (!prefix || k.startsWith(prefix))) keys.push(k);
-      }
-      return keys;
-    }catch(e){ return []; }
+  function sListKeysSync(prefix){
+    const keys = [];
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && (!prefix || k.startsWith(prefix))) keys.push(k);
+    }
+    return keys;
   }
+  async function sListKeys(prefix){ return sListKeysSync(prefix); }
 
   function migrateMonthInPlace(rec){
     if(!rec.incomes){ rec.incomes = rec.income ? [{ id: uid(), desc:'Ingreso', amount: rec.income, day:null, templateId:null }] : []; }
@@ -262,7 +252,9 @@
 
   let state = {
     global: null, monthKey: '', month: null, expandedCat: null, modal: null,
-    decisionQueue: [], draftExpense: null, savingsTotal: 0, savingsHistory: [], showInstallNote: true
+    decisionQueue: [], draftExpense: null, savingsTotal: 0, savingsHistory: [], showInstallNote: true,
+    splitDraftOverrides: {},
+    onboardStep: 1, onboardDraft: null
   };
 
   function splitsOf(monthRec){ return (monthRec && monthRec.splits) ? monthRec.splits : DEFAULT_SPLITS; }
@@ -306,9 +298,10 @@
     if(!global.incomeTemplates) global.incomeTemplates = [];
     if(!global.expenseTemplates) global.expenseTemplates = [];
     if(!global.goals) global.goals = [];
+    if(!global.categoryPlans) global.categoryPlans = { needs:[], wants:[], savings:[] };
     state.global = global;
 
-    const key = monthKeyFromDate(new Date());
+    const key = monthKeyToday();
     state.monthKey = key;
 
     let monthRec = await loadMonth('month:'+key);
@@ -355,7 +348,7 @@
       }
     }
 
-    if(!global.onboarded || global.cards.length === 0){ state.modal = { type:'onboarding' }; }
+    if(!global.onboarded || global.cards.length === 0){ state.modal = { type:'onboarding' }; state.onboardStep = 1; }
     else if(state.decisionQueue.length){ state.modal = { type:'decision' }; }
 
     await recomputeSavings();
@@ -380,11 +373,19 @@
     state.savingsTotal = total; state.savingsHistory = history;
   }
 
-  async function submitOnboarding(income, cardName){
+  async function finishOnboarding(income, cardName, fixedExpenses){
     state.global.cards.push({ id: uid(), name: cardName, cutoffDay:null, paymentDay:null, minSpend:null });
     state.global.onboarded = true;
     await saveGlobal();
-    if(income > 0){ state.month.incomes.push({ id: uid(), desc:'Ingreso', amount: income, day:null, templateId:null }); await saveMonth(); }
+    if(income > 0){ state.month.incomes.push({ id: uid(), desc:'Ingreso', amount: income, day:null, templateId:null }); }
+    const firstCardId = state.global.cards[0].id;
+    for(const fe of fixedExpenses){
+      const tmpl = { id:uid(), desc:fe.desc, amount:fe.amount, cardId:firstCardId, cat:fe.cat, day: fe.day||1 };
+      state.global.expenseTemplates.push(tmpl);
+      state.month.expenses.push({ id:uid(), desc:fe.desc, amount:fe.amount, cardId:firstCardId, cat:fe.cat, date: buildDateForDay(state.monthKey, fe.day||1), templateId:tmpl.id, isFixed:true });
+    }
+    if(fixedExpenses.length) await saveGlobal();
+    await saveMonth();
     state.modal = state.decisionQueue.length ? { type:'decision' } : null;
     await recomputeSavings();
     render();
@@ -408,6 +409,37 @@
     state.month.splits = {...splits}; state.global.splits = {...splits};
     await saveMonth(); await saveGlobal();
     render();
+  }
+
+  async function addPlannerItem(cat, desc, amount){
+    state.global.categoryPlans[cat].push({ id: uid(), desc, amount });
+    await saveGlobal();
+  }
+  async function removePlannerItem(cat, id){
+    state.global.categoryPlans[cat] = state.global.categoryPlans[cat].filter(i=>i.id!==id);
+    await saveGlobal();
+  }
+  function applyPlannerPct(cat, newPct){
+    newPct = Math.max(0, Math.min(100, Math.round(newPct)));
+    const others = CAT_ORDER.filter(c=>c!==cat);
+    const remaining = 100 - newPct;
+    const currentOthersPct = {}; let othersSum = 0;
+    for(const c of others){ currentOthersPct[c] = Math.round(splitsOf(state.month)[c]*100); othersSum += currentOthersPct[c]; }
+    const newSplitsPct = { [cat]: newPct };
+    if(othersSum <= 0){
+      const each = Math.floor(remaining/others.length);
+      others.forEach((c,i)=>{ newSplitsPct[c] = (i===others.length-1) ? remaining-each*(others.length-1) : each; });
+    }else{
+      let running = 0;
+      others.forEach((c,i)=>{
+        const share = Math.round(currentOthersPct[c]/othersSum*remaining);
+        newSplitsPct[c] = share; running += share;
+      });
+      newSplitsPct[others[others.length-1]] += (remaining - running);
+    }
+    const fractions = {}; for(const c of CAT_ORDER) fractions[c] = newSplitsPct[c]/100;
+    state.modal = { type:'settings' };
+    updateSplits(fractions);
   }
 
   async function addExpense(desc, amount, cardId, cat, date, makeFixed){
@@ -550,6 +582,33 @@
     await saveGlobal();
   }
 
+  function exportBackup(){
+    const months = {};
+    for(const k of sListKeysSync('month:')) months[k] = JSON.parse(localStorage.getItem(k));
+    const data = { global: state.global, months, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data,null,2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'respaldo-presupuesto-'+todayISO()+'.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function importBackupFile(file){
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        if(!data.global || !data.months){ alert('Este archivo no parece un respaldo válido.'); return; }
+        if(!confirm('Esto reemplazará todos los datos actuales (ingresos, gastos, tarjetas, metas, ahorro) con los del respaldo. ¿Continuar?')) return;
+        localStorage.setItem('global', JSON.stringify(data.global));
+        for(const k in data.months) localStorage.setItem(k, JSON.stringify(data.months[k]));
+        alert('Respaldo importado correctamente. La página se va a recargar.');
+        location.reload();
+      }catch(err){ alert('No se pudo leer el archivo. Asegúrate de elegir un respaldo exportado desde esta misma app.'); }
+    };
+    reader.readAsText(file);
+  }
+
   function nextOccurrence(day){
     if(!day) return null;
     const now = startOfToday();
@@ -610,6 +669,8 @@
       if(t==='incomeManager') html += renderIncomeManager();
       if(t==='incomeTemplateForm') html += renderIncomeTemplateForm();
       if(t==='expenseTemplateForm') html += renderExpenseTemplateForm();
+      if(t==='deposit') html += renderDepositModal();
+      if(t==='categoryPlanner') html += renderCategoryPlanner();
       if(t==='withdraw') html += renderWithdrawModal();
       if(t==='savingsHistory') html += renderSavingsHistory();
       if(t==='goalForm') html += renderGoalForm();
@@ -641,8 +702,9 @@
       <p class="total">${fmt.format(state.savingsTotal)}</p>
       ${goals.length ? `<p class="unassigned">Sin asignar a una meta: ${fmt.format(unalloc)}</p>` : ''}
       <div class="btnrow">
+        <button data-open-deposit>Depositar</button>
         <button data-open-withdraw>Retirar</button>
-        <button data-open-savings-history>Ver historial</button>
+        <button data-open-savings-history>Historial</button>
       </div>
     </div>`;
   }
@@ -845,9 +907,12 @@
 
         <h3>Reparto del presupuesto</h3>
         <p style="font-size:12px;color:var(--ink-soft);margin:0 0 12px;">Si tus gastos fijos superan el 50%, ajusta los porcentajes aquí. Debe sumar 100%.</p>
-        <div class="split-row"><span class="sw" style="background:${CATS.needs.hex}"></span><label>Necesidades</label><input type="number" id="sp-needs" value="${Math.round(sp.needs*100)}" min="0" max="100"> %</div>
-        <div class="split-row"><span class="sw" style="background:${CATS.wants.hex}"></span><label>Deseos</label><input type="number" id="sp-wants" value="${Math.round(sp.wants*100)}" min="0" max="100"> %</div>
-        <div class="split-row"><span class="sw" style="background:${CATS.savings.hex}"></span><label>Ahorro</label><input type="number" id="sp-savings" value="${Math.round(sp.savings*100)}" min="0" max="100"> %</div>
+        <div class="split-row"><span class="sw" style="background:${CATS.needs.hex}"></span><label>Necesidades</label><input type="number" id="sp-needs" value="${state.splitDraftOverrides.needs ?? Math.round(sp.needs*100)}" min="0" max="100"> %</div>
+        <button class="btn-text" style="margin:-8px 0 6px;" type="button" data-open-planner="needs">calcular con lista de gastos →</button>
+        <div class="split-row"><span class="sw" style="background:${CATS.wants.hex}"></span><label>Deseos</label><input type="number" id="sp-wants" value="${state.splitDraftOverrides.wants ?? Math.round(sp.wants*100)}" min="0" max="100"> %</div>
+        <button class="btn-text" style="margin:-8px 0 6px;" type="button" data-open-planner="wants">calcular con lista de gastos →</button>
+        <div class="split-row"><span class="sw" style="background:${CATS.savings.hex}"></span><label>Ahorro</label><input type="number" id="sp-savings" value="${state.splitDraftOverrides.savings ?? Math.round(sp.savings*100)}" min="0" max="100"> %</div>
+        <button class="btn-text" style="margin:-8px 0 6px;" type="button" data-open-planner="savings">calcular con lista de gastos →</button>
         <p class="split-sum ok" id="split-sum-note">Suma: 100%</p>
         <button class="btn-text" type="button" data-suggest-splits>Calcular según tu gasto real de este mes</button>
         <button class="btn-secondary" style="margin-top:0;" data-submit-splits>Guardar reparto</button>
@@ -868,6 +933,13 @@
         <h3>Tus tarjetas</h3>
         <div>${cardsHtml}</div>
         <button class="btn-secondary" data-add-card-open>+ Agregar tarjeta</button>
+
+        <hr class="sep">
+        <h3>Respaldo</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 12px;">Descarga una copia de todo (ingresos, gastos, tarjetas, metas, ahorro) o restaura una anterior — útil si cambias de teléfono o de página.</p>
+        <button class="btn-secondary" data-export-backup>⬇️ Exportar respaldo</button>
+        <button class="btn-secondary" data-import-backup>⬆️ Importar respaldo</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display:none;">
       </div>
     </div>`;
   }
@@ -893,6 +965,29 @@
         </div>
         <label class="checkbox-field"><input type="checkbox" id="im-repeat"> Repetir cada mes en este día</label>
         <button class="btn-secondary" style="margin-top:0;" data-submit-income-entry>Agregar</button>
+      </div>
+    </div>`;
+  }
+
+  function renderCategoryPlanner(){
+    const cat = state.modal.cat;
+    const items = state.global.categoryPlans[cat] || [];
+    const sum = items.reduce((s,i)=>s+i.amount,0);
+    const income = monthIncome(state.month);
+    const pct = income>0 ? Math.round((sum/income)*100) : 0;
+    const rows = items.map(i=>`<div class="list-row"><div class="ci"><div class="n">${escapeHtml(i.desc)}</div></div><span style="font-family:var(--font-mono);font-weight:600;">${fmt.format(i.amount)}</span><button data-remove-planner-item="${i.id}">✕</button></div>`).join('') || '<p style="font-size:13px;color:var(--ink-soft);">Aún no agregas nada a esta lista.</p>';
+    return `<div class="overlay" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Límite de ${CATS[cat].label}</h2>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;">Enlista lo que planeas gastar en esta categoría. Sumamos todo y calculamos qué porcentaje de tu ingreso representa — sin esperar a que pase el mes.</p>
+        <div>${rows}</div>
+        <div class="field"><label>¿En qué?</label><input type="text" id="pl-desc" placeholder="Ej. Renta, súper, gasolina…"></div>
+        <div class="field"><label>Monto</label><input type="number" id="pl-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+        <button class="btn-secondary" style="margin-top:0;" data-add-planner-item="${cat}">+ Agregar a la lista</button>
+        <hr class="sep">
+        <p class="totalline">Total planeado: <b>${fmt.format(sum)}</b>${income>0 ? ` = <b>${pct}%</b> de tu ingreso (${fmt.format(income)})` : ' — registra tu ingreso del mes para calcular el %'}</p>
+        <button class="btn-primary" data-apply-planner="${cat}" ${income<=0?'disabled':''}>Usar ${pct}% como límite de ${CATS[cat].label}</button>
       </div>
     </div>`;
   }
@@ -960,6 +1055,26 @@
     </div>`;
   }
 
+  function renderDepositModal(){
+    const draft = state.draftExpense || {};
+    const cardOpts = state.global.cards.map(c=>`<option value="${c.id}" ${draft.cardId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
+    return `<div class="overlay center" data-close-overlay>
+      <div class="sheet" data-stop>
+        <button class="sheet-close" data-close-modal>×</button>
+        <h2>Depositar a tu alcancía</h2>
+        <div class="field"><label>¿Para qué es? (opcional)</label><input type="text" id="dep-desc" placeholder="Ej. Ahorro del mes" value="${escapeAttr(draft.desc||'')}" autofocus></div>
+        <div class="row-2">
+          <div class="field"><label>Monto</label><input type="number" id="dep-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+          <div class="field"><label>Fecha</label><input type="date" id="dep-date" value="${draft.date||todayISO()}"></div>
+        </div>
+        <div class="field"><label>Tarjeta / cuenta de origen</label>
+          <select id="dep-card">${cardOpts || '<option value="">Sin tarjetas todavía</option>'}<option value="__new__">+ Agregar tarjeta nueva</option></select>
+        </div>
+        <button class="btn-primary" data-submit-deposit>Depositar</button>
+      </div>
+    </div>`;
+  }
+
   function renderWithdrawModal(){
     return `<div class="overlay center" data-close-overlay>
       <div class="sheet" data-stop>
@@ -1008,15 +1123,52 @@
     </div>`;
   }
 
+  // ---------- onboarding (multi-step: income+card -> fixed payments prompt -> fixed payments capture) ----------
   function renderOnboarding(){
-    return `<div class="loading-screen" style="justify-content:flex-start;padding-top:12vh;">
+    const step = state.onboardStep;
+    if(step === 1){
+      return `<div class="loading-screen" style="justify-content:flex-start;padding-top:12vh;">
+        <div style="max-width:380px;width:100%;padding:0 24px;">
+          <p class="month-label" style="text-align:left;">Bienvenido</p>
+          <h2 style="font-family:var(--font-display);font-size:24px;margin:0 0 6px;">Armemos tus sobres</h2>
+          <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 22px;">Con la regla 50/30/20: 50% Necesidades, 30% Deseos, 20% Ahorro. Se calcula solo a partir de tu ingreso, y podrás ajustar los porcentajes después en Ajustes.</p>
+          <div class="field"><label>Tu ingreso de este mes (MXN)</label><input type="number" id="ob-income" placeholder="18000" min="0" step="0.01" inputmode="decimal"></div>
+          <div class="field"><label>Tu primera tarjeta</label><input type="text" id="ob-card" placeholder="Ej. BBVA débito"></div>
+          <button class="btn-primary" data-onboard-step1-next>Continuar</button>
+        </div>
+      </div>`;
+    }
+    if(step === 2){
+      return `<div class="loading-screen" style="justify-content:flex-start;padding-top:14vh;">
+        <div style="max-width:380px;width:100%;padding:0 24px;">
+          <h2 style="font-family:var(--font-display);font-size:22px;margin:0 0 6px;">¿Tienes pagos fijos?</h2>
+          <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 22px;">Renta, luz, internet, suscripciones… cosas que pagas todos los meses. Si nos dices de qué son, los calculamos automáticamente cada mes sin que tengas que volver a capturarlos.</p>
+          <button class="btn-primary" data-onboard-has-fixed="yes">Sí, quiero agregarlos</button>
+          <button class="btn-secondary" data-onboard-has-fixed="no">No por ahora</button>
+        </div>
+      </div>`;
+    }
+    // step 3: capture fixed payments
+    const list = state.onboardDraft.fixedExpenses;
+    const rows = list.map((fe,idx)=>`<div class="list-row"><div class="ci"><div class="n">${escapeHtml(fe.desc)}</div><div class="s">${fmt.format(fe.amount)} · ${CATS[fe.cat].label} · día ${fe.day}</div></div><button data-remove-onboard-fixed="${idx}">✕</button></div>`).join('') || '<p style="font-size:13px;color:var(--ink-soft);">Aún no agregas ninguno.</p>';
+    return `<div class="loading-screen" style="justify-content:flex-start;padding-top:8vh;">
       <div style="max-width:380px;width:100%;padding:0 24px;">
-        <p class="month-label" style="text-align:left;">Bienvenido</p>
-        <h2 style="font-family:var(--font-display);font-size:24px;margin:0 0 6px;">Armemos tus sobres</h2>
-        <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 22px;">Con la regla 50/30/20: 50% Necesidades, 30% Deseos, 20% Ahorro. Podrás ajustar todo después en Ajustes, incluyendo sueldos programados y gastos fijos.</p>
-        <div class="field"><label>Tu ingreso de este mes (MXN)</label><input type="number" id="ob-income" placeholder="18000" min="0" step="0.01" inputmode="decimal"></div>
-        <div class="field"><label>Tu primera tarjeta</label><input type="text" id="ob-card" placeholder="Ej. BBVA débito"></div>
-        <button class="btn-primary" data-submit-onboarding>Empezar</button>
+        <h2 style="font-family:var(--font-display);font-size:20px;margin:0 0 14px;">Tus pagos fijos</h2>
+        <div style="margin-bottom:14px;">${rows}</div>
+        <div class="field"><label>¿De qué es?</label><input type="text" id="ob-fe-desc" placeholder="Ej. Renta, luz, Netflix…"></div>
+        <div class="row-2">
+          <div class="field"><label>Monto</label><input type="number" id="ob-fe-amount" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+          <div class="field"><label>Día del mes</label><input type="number" id="ob-fe-day" min="1" max="31" placeholder="Ej. 5"></div>
+        </div>
+        <div class="field"><label>Categoría</label>
+          <div class="chip-row">
+            <button type="button" class="chip active" data-obcat="needs">Necesidades</button>
+            <button type="button" class="chip" data-obcat="wants">Deseos</button>
+            <button type="button" class="chip" data-obcat="savings">Ahorro</button>
+          </div>
+        </div>
+        <button class="btn-secondary" style="margin-top:0;" data-onboard-add-fixed>+ Agregar a la lista</button>
+        <button class="btn-primary" data-onboard-finish>Terminar</button>
       </div>
     </div>`;
   }
@@ -1025,11 +1177,54 @@
   function escapeAttr(s){ return escapeHtml(s); }
 
   function bindOnboarding(){
-    document.querySelector('[data-submit-onboarding]').addEventListener('click', ()=>{
-      const income = parseFloat(document.getElementById('ob-income').value)||0;
-      const card = document.getElementById('ob-card').value.trim();
-      if(!card){ alert('Agrega el nombre de al menos una tarjeta.'); return; }
-      submitOnboarding(income, card);
+    const step = state.onboardStep;
+    if(step === 1){
+      document.querySelector('[data-onboard-step1-next]').addEventListener('click', ()=>{
+        const income = parseFloat(document.getElementById('ob-income').value)||0;
+        const card = document.getElementById('ob-card').value.trim();
+        if(!card){ alert('Agrega el nombre de al menos una tarjeta.'); return; }
+        state.onboardDraft = { income, card, fixedExpenses: [] };
+        state.onboardStep = 2;
+        render();
+      });
+      return;
+    }
+    if(step === 2){
+      document.querySelectorAll('[data-onboard-has-fixed]').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          if(el.getAttribute('data-onboard-has-fixed')==='yes'){ state.onboardStep = 3; render(); }
+          else{ finishOnboarding(state.onboardDraft.income, state.onboardDraft.card, []); }
+        });
+      });
+      return;
+    }
+    // step 3
+    let selectedCat = 'needs';
+    document.querySelectorAll('.chip[data-obcat]').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        document.querySelectorAll('.chip[data-obcat]').forEach(c=>c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedCat = chip.getAttribute('data-obcat');
+      });
+    });
+    document.querySelectorAll('[data-remove-onboard-fixed]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        state.onboardDraft.fixedExpenses.splice(parseInt(el.getAttribute('data-remove-onboard-fixed')),1);
+        render();
+      });
+    });
+    document.querySelector('[data-onboard-add-fixed]').addEventListener('click', ()=>{
+      const desc = document.getElementById('ob-fe-desc').value.trim();
+      const amount = parseFloat(document.getElementById('ob-fe-amount').value);
+      const day = parseInt(document.getElementById('ob-fe-day').value);
+      if(!desc){ alert('Escribe de qué es el pago.'); return; }
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      if(!day || day<1 || day>31){ alert('Ingresa un día del mes válido.'); return; }
+      state.onboardDraft.fixedExpenses.push({ desc, amount, day, cat: selectedCat });
+      render();
+    });
+    document.querySelector('[data-onboard-finish]').addEventListener('click', ()=>{
+      finishOnboarding(state.onboardDraft.income, state.onboardDraft.card, state.onboardDraft.fixedExpenses);
     });
   }
 
@@ -1057,6 +1252,29 @@
 
     const settingsBtn = app.querySelector('[data-open-settings]');
     if(settingsBtn) settingsBtn.addEventListener('click', ()=>{ state.modal={type:'settings'}; render(); });
+
+    const openDeposit = app.querySelector('[data-open-deposit]');
+    if(openDeposit) openDeposit.addEventListener('click', ()=>{ state.draftExpense=null; state.modal={type:'deposit'}; render(); });
+    const depCardSelect = app.querySelector('#dep-card');
+    if(depCardSelect){
+      depCardSelect.addEventListener('change', ()=>{
+        if(depCardSelect.value === '__new__'){
+          state.draftExpense = { desc: document.getElementById('dep-desc').value, date: document.getElementById('dep-date').value, isDeposit:true };
+          state.modal = { type:'card', cardId:null, returnTo:'deposit' };
+          render();
+        }
+      });
+    }
+    const submitDeposit = app.querySelector('[data-submit-deposit]');
+    if(submitDeposit) submitDeposit.addEventListener('click', ()=>{
+      const desc = document.getElementById('dep-desc').value.trim() || 'Depósito';
+      const amount = parseFloat(document.getElementById('dep-amount').value);
+      const cardId = document.getElementById('dep-card').value;
+      const date = document.getElementById('dep-date').value || todayISO();
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      if(!cardId || cardId==='__new__'){ alert('Selecciona o agrega una tarjeta.'); return; }
+      addExpense(desc, amount, cardId, 'savings', date, false);
+    });
 
     const openWithdraw = app.querySelector('[data-open-withdraw]');
     if(openWithdraw) openWithdraw.addEventListener('click', ()=>{ state.modal={type:'withdraw'}; render(); });
@@ -1152,6 +1370,36 @@
       refreshSum();
     });
 
+    app.querySelectorAll('[data-open-planner]').forEach(el=>{
+      el.addEventListener('click', ()=>{ state.modal = { type:'categoryPlanner', cat: el.getAttribute('data-open-planner') }; render(); });
+    });
+    const addPlannerBtn = app.querySelector('[data-add-planner-item]');
+    if(addPlannerBtn) addPlannerBtn.addEventListener('click', async ()=>{
+      const desc = document.getElementById('pl-desc').value.trim();
+      const amount = parseFloat(document.getElementById('pl-amount').value);
+      if(!desc){ alert('Escribe en qué planeas gastar.'); return; }
+      if(!amount || amount<=0){ alert('Ingresa un monto válido.'); return; }
+      await addPlannerItem(addPlannerBtn.getAttribute('data-add-planner-item'), desc, amount);
+      render();
+    });
+    app.querySelectorAll('[data-remove-planner-item]').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        await removePlannerItem(state.modal.cat, el.getAttribute('data-remove-planner-item'));
+        render();
+      });
+    });
+    const applyPlannerBtn = app.querySelector('[data-apply-planner]');
+    if(applyPlannerBtn) applyPlannerBtn.addEventListener('click', ()=>{
+      const cat = applyPlannerBtn.getAttribute('data-apply-planner');
+      const items = state.global.categoryPlans[cat] || [];
+      const sum = items.reduce((s,i)=>s+i.amount,0);
+      const income = monthIncome(state.month);
+      if(income<=0) return;
+      const pct = Math.round((sum/income)*100);
+      if(!confirm(`Vas a dejar ${CATS[cat].label} en ${pct}% (ajustando las otras categorías automáticamente). ¿Continuar?`)) return;
+      applyPlannerPct(cat, pct);
+    });
+
     const openIncTpl = app.querySelector('[data-open-income-template]');
     if(openIncTpl) openIncTpl.addEventListener('click', ()=>{ state.modal={type:'incomeTemplateForm'}; render(); });
     app.querySelectorAll('[data-del-income-template]').forEach(el=>{
@@ -1210,6 +1458,7 @@
       const returnTo = state.modal.returnTo, cardId = state.modal.cardId;
       const newId = await saveCard({ id: cardId, name, cutoffDay, paymentDay, minSpend });
       if(returnTo === 'addExpense'){ state.draftExpense = state.draftExpense || {}; state.draftExpense.cardId = newId; state.modal = { type:'addExpense' }; }
+      else if(returnTo === 'deposit'){ state.draftExpense = state.draftExpense || {}; state.draftExpense.cardId = newId; state.modal = { type:'deposit' }; }
       else{ state.modal = { type:'settings' }; }
       render();
     });
@@ -1259,7 +1508,6 @@
 
     app.querySelectorAll('[data-decision]').forEach(el=>{ el.addEventListener('click', ()=> resolveDecision(el.getAttribute('data-decision'))); });
 
-    // ----- goals -----
     app.querySelectorAll('[data-open-goal-form]').forEach(el=>{
       el.addEventListener('click', ()=>{ state.modal = { type:'goalForm', goalId:null }; render(); });
     });
@@ -1303,6 +1551,17 @@
         render();
       });
     });
+
+    const exportBtn = app.querySelector('[data-export-backup]');
+    if(exportBtn) exportBtn.addEventListener('click', exportBackup);
+    const importBtn = app.querySelector('[data-import-backup]');
+    const importFileInput = app.querySelector('#import-file-input');
+    if(importBtn && importFileInput){
+      importBtn.addEventListener('click', ()=> importFileInput.click());
+      importFileInput.addEventListener('change', ()=>{
+        if(importFileInput.files && importFileInput.files[0]) importBackupFile(importFileInput.files[0]);
+      });
+    }
   }
 
   init();
